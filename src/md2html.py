@@ -48,6 +48,10 @@ def convert_markdown_to_html(markdown_file, output_file_path, base_template, out
     print(f'Converted {markdown_file} to {output_file_path}')
 
 def convert_directory(input_dir, output_dir):
+    # 如果目标目录不存在，则创建目标目录
+    if not os.path.exists(output_dir):
+        os.makedirs(output_dir)
+
     # 读取HTML模板
     with open('src/templates/base.html', 'r', encoding='utf-8') as f:
         base_template = f.read()
