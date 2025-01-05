@@ -4,6 +4,7 @@ import re
 import requests
 from urllib.parse import urlparse
 import shutil
+import time
 
 def download_image(url, download_dir):
     response = requests.get(url, stream=True)
@@ -11,6 +12,13 @@ def download_image(url, download_dir):
         parsed_url = urlparse(url)
         image_name = os.path.basename(parsed_url.path)
         download_path = os.path.join(download_dir, image_name)
+        
+        # 如果文件存在，则添加时间戳
+        if os.path.exists(download_path):
+            timestamp = int(time.time())
+            image_name = f"{os.path.splitext(image_name)[0]}_{timestamp}{os.path.splitext(image_name)[1]}"
+            download_path = os.path.join(download_dir, image_name)
+        
         os.makedirs(download_dir, exist_ok=True)
         with open(download_path, 'wb') as f:
             for chunk in response.iter_content(1024):
