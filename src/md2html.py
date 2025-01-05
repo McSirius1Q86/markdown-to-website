@@ -3,6 +3,7 @@ import markdown
 import re
 import requests
 from urllib.parse import urlparse
+import shutil
 
 def download_image(url, download_dir):
     response = requests.get(url, stream=True)
@@ -25,14 +26,24 @@ def convert_markdown_to_html(markdown_file, output_file_path, base_template, out
     # 将Markdown中的本地链接后缀改为.html
     markdown_content = re.sub(r'\[([^\]]+)\]\(([^)]+\.md)\)', r'[\1](\2.html)', markdown_content)
 
-    # 查找并下载网络图片
+    # 查找并处理图片链接
     image_links = re.findall(r'!\[([^\]]*)\]\(([^)]+)\)', markdown_content)
     for alt_text, image_path in image_links:
         if image_path.startswith(('http://', 'https://')):
+            # 下载网络图片
             download_dir = os.path.join(output_dir, 'download', 'images')
             downloaded_image_path = download_image(image_path, download_dir)
             if downloaded_image_path:
                 relative_image_path = os.path.relpath(downloaded_image_path, output_dir)
+                markdown_content = markdown_content.replace(image_path, relative_image_path)
+        else:
+            # 复制本地图片
+            abs_image_path = os.path.join(os.path.dirname(markdown_file), image_path)
+            if os.path.exists(abs_image_path):
+                relative_image_path = os.path.relpath(abs_image_path, os.path.dirname(markdown_file))
+                target_image_path = os.path.join(output_dir, relative_image_path)
+                os.makedirs(os.path.dirname(target_image_path), exist_ok=True)
+                shutil.copy2(abs_image_path, target_image_path)
                 markdown_content = markdown_content.replace(image_path, relative_image_path)
 
     # 将Markdown转换为HTML
@@ -53,8 +64,15 @@ def convert_directory(input_dir, output_dir):
         os.makedirs(output_dir)
 
     # 读取HTML模板
-    with open('src/templates/base.html', 'r', encoding='utf-8') as f:
+    template_path = 'src/templates/base.html'
+    if not os.path.exists(template_path):
+        raise FileNotFoundError(f"Template file not found: {template_path}")
+
+    with open(template_path, 'r', encoding='utf-8') as f:
         base_template = f.read()
+
+    if '{{ content }}' not in base_template:
+        raise ValueError("Template file does not contain '{{ content }}' placeholder")
 
     for root, _, files in os.walk(input_dir):
         for file in files:
